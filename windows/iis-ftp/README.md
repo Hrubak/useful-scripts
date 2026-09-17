@@ -16,7 +16,14 @@ Plain FTP sends credentials and backup files in the clear. Bind to a management 
 
 ## Configure
 
-Edit the `CONFIG` hashtable at the top of the script, or override on the command line.
+Edit `New-SmartZoneIisFtp.settings.json` in the same folder as the script. Do not put passwords in the JSON if the file may be copied off-box.
+
+Load order: built-in defaults → settings JSON → command-line parameters (last wins).
+
+```powershell
+.\New-SmartZoneIisFtp.ps1 -DumpConfig
+.\New-SmartZoneIisFtp.ps1 -SettingsFile 'C:\FTP\sz.settings.json'
+```
 
 | Key | Meaning |
 |---|---|
@@ -27,7 +34,7 @@ Edit the `CONFIG` hashtable at the top of the script, or override on the command
 | `PasvLow` / `PasvHigh` | Passive data range. Open the same range on any firewall in front. |
 | `ExternalIp` | IP advertised in PASV. Blank = `BindIp`. Use the NAT IP only if SZ is across PAT. |
 | `SslMode` | `None` (SZ plain FTP), `Allow`, or `Require` (needs `SslCertThumbprint`). |
-| `EnableUserIsolation` | `$true` stores files under `PhysicalPath\\LocalUser\\<user>`. |
+| `EnableUserIsolation` | `$true` stores files under `PhysicalPath\LocalUser\<user>`. |
 | `RecreateSite` | `$true` deletes and rebuilds the IIS site. |
 
 ## Run
@@ -36,51 +43,3 @@ Edit the `CONFIG` hashtable at the top of the script, or override on the command
 Set-ExecutionPolicy -Scope Process Bypass
 .\New-SmartZoneIisFtp.ps1
 ```
-
-```powershell
-.\New-SmartZoneIisFtp.ps1 -BindIp '10.20.30.40' -PhysicalPath 'E:\\Backups\\SZ' -FtpUser 'szbackup'
-```
-
-```powershell
-.\New-SmartZoneIisFtp.ps1 -RecreateSite
-```
-
-Re-runs are idempotent for group, folder, site settings, and firewall rules. An existing local user is **not** password-rotated.
-
-```powershell
-Set-LocalUser -Name szbackup -Password (Read-Host -AsSecureString)
-```
-
-## What it creates
-
-1. Local group + user (`PasswordNeverExpires`, user cannot change password)
-2. Drop folder with NTFS: SYSTEM + Administrators Full, group Modify, inheritance broken
-3. IIS FTP site: Basic auth on, anonymous off, group Read+Write
-4. Server-wide PASV port range + advertised external IP
-5. Firewall rules `FTP-SZ-Control` and `FTP-SZ-Passive`
-6. Restarts `FTPSVC` and the site
-
-## SmartZone
-
-**Administration → External Services → FTP → Create**
-
-| Field | Value |
-|---|---|
-| Protocol | FTP |
-| Host | `BindIp` / `ExternalIp` |
-| Port | 21 |
-| User | `szbackup` (or whatever you set) |
-| Remote Directory | `/` (must start with `/`) |
-
-Then enable Auto Export under Backup and Restore → Configuration. Click **Test** first.
-
-## Failure modes
-
-| Symptom | Likely cause |
-|---|---|
-| SZ Test fails / `425` | PASV advertised IP wrong, `50000-50050` blocked, or FTP ALG rewriting control channel |
-| Auth rejected | Wrong password; user disabled; authorization not applied to the site |
-| Upload works, file missing | User isolation on — look under `PhysicalPath\\LocalUser\\<user>` |
-| SSL handshake fail | `SslMode = Require` but SZ is speaking plain FTP |
-
-Restrict source IPs to the SmartZone management address at the host or upstream firewall.
