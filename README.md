@@ -1,6 +1,6 @@
 # useful-scripts
 
-Private collection of operational scripts used on standalone Windows servers, IIS, and related MSP work.
+Operational scripts for standalone Windows servers, IIS, Mitel/Shoreware, and related MSP work.
 
 Each script lives in its own folder with a `README.md`.
 
@@ -9,12 +9,13 @@ Each script lives in its own folder with a `README.md`.
 | Path | Purpose |
 |---|---|
 | [windows/iis-ftp](windows/iis-ftp/) | IIS FTP drop site for SmartZone / SonicWall config exports |
+| [windows/shoreware-backup](windows/shoreware-backup/) | Shoreware MySQL dump, gzip, Graph upload to SharePoint |
 
 ## Conventions
 
-- Edit the `CONFIG` block (or pass parameters). Do not commit secrets.
+- Config in a sibling `*.settings.json`. Do not commit secrets.
 - Scripts that change a server require an elevated session.
-- Plain FTP / cleartext protocols stay on a management VLAN only.
+- Always push changes to this repo as new commits on `main`.
 
 ## License
 
