@@ -46,41 +46,19 @@ param(
 # CONFIG — edit these. Any -Parameter on the command line overrides the same key.
 # =============================================================================
 $Config = @{
-    # IIS FTP site name
     SiteName           = 'SmartZone-Backup'
-
-    # NIC SmartZone reaches. Use '*' only if this box has a single IP.
     BindIp             = '10.0.0.10'
-
     ControlPort        = 21
-
-    # Drop folder. Created if missing.
     PhysicalPath       = 'D:\FTP\SmartZone'
-
     FtpUser            = 'szbackup'
     FtpGroup           = 'FTP-SZBackup'
-
-    # Leave blank to be prompted at runtime. Do not commit a real password.
     FtpPasswordPlain   = ''
-
-    # Passive data ports. Open the same range on any firewall in front of this host.
     PasvLow            = 50000
     PasvHigh           = 50050
-
-    # IP SmartZone uses as the destination (this host's IP on same L3, or NAT IP if PAT'd).
-    # Empty = BindIp (or omitted if BindIp is '*').
     ExternalIp         = ''
-
-    # None  = no certificate, SSL allowed-but-unused  (SZ plain FTP)
-    # Allow = optional FTPS if a cert thumbprint is set
-    # Require = FTPS only — SZ will fail Test unless it speaks explicit FTPS
     SslMode            = 'None'
     SslCertThumbprint  = ''
-
-    # $true = isolate to PhysicalPath\LocalUser\<FtpUser>
     EnableUserIsolation = $false
-
-    # $true = delete and rebuild the FTP site if it already exists
     RecreateSite        = $false
 }
 # =============================================================================
@@ -225,7 +203,7 @@ function Ensure-DropFolder {
         )
         foreach ($r in $rules) { $acl.AddAccessRule($r) | Out-Null }
         Set-Acl -LiteralPath $p -AclObject $acl
-        Write-Ok "NTFS ACL set on $p (SYSTEM, Administrators, $Group:Modify)"
+        Write-Ok ("NTFS ACL set on {0} (SYSTEM, Administrators, {1}:Modify)" -f $p, $Group)
     }
 
     return $target
@@ -368,9 +346,6 @@ function Start-FtpStack {
     Write-Ok "FTP site $SiteName started"
 }
 
-# -----------------------------------------------------------------------------
-# Main
-# -----------------------------------------------------------------------------
 $ErrorActionPreference = 'Stop'
 $Cfg = Resolve-Config -Config $Config -Bound $PSBoundParameters
 
@@ -404,20 +379,20 @@ Ensure-Firewall -Cfg $Cfg
 Write-Step 'Start services'
 Start-FtpStack -SiteName $Cfg.SiteName
 
-$remoteDir = '/'
-
 Write-Host ''
 Write-Host 'DONE. SmartZone External Services > FTP' -ForegroundColor Green
 Write-Host "  Protocol        : FTP"
 Write-Host "  Host            : $(if ($Cfg.ExternalIp) { $Cfg.ExternalIp } else { $Cfg.BindIp })"
 Write-Host "  Port            : $($Cfg.ControlPort)"
 Write-Host "  User            : $($Cfg.FtpUser)"
-Write-Host "  Remote Directory: $remoteDir   (must start with /)"
+Write-Host "  Remote Directory: /   (must start with /)"
 Write-Host ''
 Write-Host 'Verify from another host:'
 Write-Host "  ftp $($Cfg.BindIp)"
 Write-Host "  # login as $($Cfg.FtpUser), then: put test.txt"
-Write-Host "  # file should land in $($Cfg.PhysicalPath)$(if ($Cfg.EnableUserIsolation) { \"\\LocalUser\\$($Cfg.FtpUser)\" })"
+$land = $Cfg.PhysicalPath
+if ($Cfg.EnableUserIsolation) { $land = Join-Path $land "LocalUser\$($Cfg.FtpUser)" }
+Write-Host "  # file should land in $land"
 Write-Host ''
 Write-Host 'If SZ Test fails with 425: PASV advertised IP or ports 50000-50050 blocked, or FTP ALG on the path.'
 Write-Host 'Rotate the password with: Set-LocalUser -Name szbackup -Password (Read-Host -AsSecureString)'
