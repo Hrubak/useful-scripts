@@ -56,7 +56,10 @@ function Import-SettingsFile {
         return $Config
     }
     Write-Host "    Settings: $Path" -ForegroundColor DarkGray
-    $json = (Get-Content -LiteralPath $Path -Raw -Encoding UTF8) | ConvertFrom-Json
+    $raw = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+    $raw = [regex]::Replace($raw, '\\(?![\\/"bfnrtu])', '\\')
+    try { $json = $raw | ConvertFrom-Json }
+    catch { throw "Settings JSON is invalid: $Path" }
     foreach ($p in $json.PSObject.Properties) { $Config[$p.Name] = $p.Value }
     return $Config
 }
