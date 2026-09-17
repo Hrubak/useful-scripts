@@ -2,7 +2,7 @@
   "SiteName": "SmartZone-Backup",
   "BindIp": "10.0.0.10",
   "ControlPort": 21,
-  "PhysicalPath": "D:\\FTP\\SmartZone",
+  "PhysicalPath": "C:/FTP/SmartZone",
   "FtpUser": "szbackup",
   "FtpGroup": "FTP-SZBackup",
   "FtpPasswordPlain": "",
