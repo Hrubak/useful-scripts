@@ -1,0 +1,24 @@
+{
+  "TenantId": "00000000-0000-0000-0000-000000000000",
+  "ClientId": "00000000-0000-0000-0000-000000000000",
+  "SiteName": "VoIPTeam",
+  "GraphSitePath": "root:/sites/VoIPTeam",
+  "LibraryName": "Documents",
+  "FolderPath": "Client Shoreware Backups",
+  "ServerName": "",
+  "BackupRoot": "C:/ShorewareBackups",
+  "CredFile": "C:/ShorewareBackups/ShorewareBackupCreds.xml",
+  "MysqlHost": "127.0.0.1",
+  "MysqlUser": "root",
+  "MysqlDumpPath": "",
+  "MysqlRegistryPath": "HKLM:\\SOFTWARE\\Wow6432Node\\MySQL AB\\MySQL Server",
+  "ChunkSizeMB": 10,
+  "RetentionDays": 365,
+  "KeepLocalFiles": false,
+  "Databases": [
+    {"Name": "Shoreware", "Port": 4308, "RegistryValueName": "Location", "OutputFile": "shorewareConfigDump.sql"},
+    {"Name": "shorewarecdr", "Port": 4309, "RegistryValueName": "CDRLocation", "OutputFile": "shorewareCDRdump.sql"},
+    {"Name": "shorewaremonitoring", "Port": 4310, "RegistryValueName": "MonitoringLocation", "OutputFile": "shorewareMonitoringDump.sql"},
+    {"Name": "ShorewareWebBridge", "Port": 4308, "RegistryValueName": "Location", "OutputFile": "shorewareWebBridgeDump.sql"}
+  ]
+}
