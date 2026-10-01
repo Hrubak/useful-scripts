@@ -39,22 +39,24 @@ param(
 )
 
 Set-StrictMode -Version 2.0
+# WinForms click handlers run outside script scope. Entry points are global:
+# so the Run button can resolve them. State is $global: for the same reason.
 $ErrorActionPreference = 'Stop'
 
-$script:MarkdownCap = 25
-$script:PairWindowMinutes = 30
-$script:DefaultDays = 7
-$script:AltCred = $null
-$script:CredPrompted = $false
-$script:CredCancelled = $false
+$global:MarkdownCap = 25
+$global:PairWindowMinutes = 30
+$global:DefaultDays = 7
+$global:AltCred = $null
+$global:CredPrompted = $false
+$global:CredCancelled = $false
 
-$script:RebootIds = @(1074, 6006, 6008, 6005, 41)
-$script:UpdateIds = @(19, 20, 43, 44)
-$script:PairUpdateIds = @(19, 20, 43)
-$script:PairRebootIds = @(1074, 6008, 41)
-$script:UpdateLog = 'Microsoft-Windows-WindowsUpdateClient/Operational'
+$global:RebootIds = @(1074, 6006, 6008, 6005, 41)
+$global:UpdateIds = @(19, 20, 43, 44)
+$global:PairUpdateIds = @(19, 20, 43)
+$global:PairRebootIds = @(1074, 6008, 41)
+$global:UpdateLog = 'Microsoft-Windows-WindowsUpdateClient/Operational'
 
-$script:IdLabel = @{
+$global:IdLabel = @{
     1074 = 'Shutdown initiated'
     6006 = 'Event Log service stopped'
     6008 = 'Unexpected shutdown'
@@ -78,19 +80,19 @@ function Test-UiAvailable {
     return ([Environment]::UserInteractive -and $sta)
 }
 
-function Get-IdLabel {
+function global:Get-IdLabel {
     param([int]$Id)
-    if ($script:IdLabel.ContainsKey($Id)) { return $script:IdLabel[$Id] }
+    if ($global:IdLabel.ContainsKey($Id)) { return $global:IdLabel[$Id] }
     return "Event $Id"
 }
 
-function Test-AccessDeniedMessage {
+function global:Test-AccessDeniedMessage {
     param([string]$Message)
     if ([string]::IsNullOrWhiteSpace($Message)) { return $false }
     return $Message -match 'Access is denied|0x80070005|Access denied|UnauthorizedAccess|authentication|credentials|Logon failure|user name or password is incorrect'
 }
 
-function Get-DesktopPath {
+function global:Get-DesktopPath {
     $desktop = [Environment]::GetFolderPath('Desktop')
     if ([string]::IsNullOrWhiteSpace($desktop)) {
         $desktop = Join-Path $env:USERPROFILE 'Desktop'
@@ -101,7 +103,7 @@ function Get-DesktopPath {
     return $desktop
 }
 
-function Get-DomainName {
+function global:Get-DomainName {
     try {
         $cs = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop
         if ($cs.PartOfDomain -and $cs.Domain) { return [string]$cs.Domain }
@@ -109,7 +111,7 @@ function Get-DomainName {
     return $null
 }
 
-function Get-DcListFromNltest {
+function global:Get-DcListFromNltest {
     param([string]$Domain)
     $lines = & nltest.exe /dclist:$Domain 2>&1 | ForEach-Object { "$_" }
     $hosts = New-Object System.Collections.Generic.List[string]
@@ -124,7 +126,7 @@ function Get-DcListFromNltest {
     return @($hosts | Select-Object -Unique)
 }
 
-function Get-DomainControllerTargets {
+function global:Get-DomainControllerTargets {
     $notes = New-Object System.Collections.Generic.List[string]
     $ad = Get-Module -ListAvailable -Name ActiveDirectory
     if ($ad) {
@@ -146,7 +148,7 @@ function Get-DomainControllerTargets {
     return [pscustomobject]@{ Hosts = $dcs; Notes = @($notes) }
 }
 
-function Get-MemberServerTargets {
+function global:Get-MemberServerTargets {
     $notes = New-Object System.Collections.Generic.List[string]
     $ad = Get-Module -ListAvailable -Name ActiveDirectory
     if (-not $ad) {
@@ -176,7 +178,7 @@ function Get-MemberServerTargets {
     return [pscustomobject]@{ Hosts = @($hosts | Select-Object -Unique); Notes = @($notes) }
 }
 
-function Read-TargetFile {
+function global:Read-TargetFile {
     param([string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) {
         throw "Target file not found: $Path"
@@ -190,14 +192,14 @@ function Read-TargetFile {
     return @($hosts | Select-Object -Unique)
 }
 
-function Parse-ManualHosts {
+function global:Parse-ManualHosts {
     param([string]$Text)
     if ([string]::IsNullOrWhiteSpace($Text)) { return @() }
     $parts = $Text -split '[,\s;]+' | Where-Object { $_ }
     return @($parts | Select-Object -Unique)
 }
 
-function Resolve-Targets {
+function global:Resolve-Targets {
     param(
         [ValidateSet('DomainControllers', 'MemberServers', 'Manual', 'File')]
         [string]$Mode,
@@ -224,7 +226,7 @@ function Resolve-Targets {
     }
 }
 
-function Test-LocalHostName {
+function global:Test-LocalHostName {
     param([string]$Name)
     if ([string]::IsNullOrWhiteSpace($Name)) { return $false }
     $n = $Name.Trim().TrimEnd('.')
@@ -240,7 +242,7 @@ function Test-LocalHostName {
     return $false
 }
 
-function New-CollectorScript {
+function global:New-CollectorScript {
     # Self-contained. Do not close over caller functions. PS 5.1 Invoke-Command safe.
     return {
         param($StartTime, $RebootIds, $UpdateIds, $UpdateLog)
@@ -294,7 +296,7 @@ function New-CollectorScript {
     }
 }
 
-function Connect-Ipc {
+function global:Connect-Ipc {
     param([string]$ComputerName, [pscredential]$Credential)
     if (-not ('NetUseNative' -as [type])) {
         $src = @'
@@ -333,25 +335,25 @@ public class NetUseNative {
     return $remote
 }
 
-function Disconnect-Ipc {
+function global:Disconnect-Ipc {
     param([string]$Remote)
     if (-not $Remote) { return }
     try { [void][NetUseNative]::WNetCancelConnection2($Remote, 0, $true) } catch { }
 }
 
-function Invoke-CredentialPrompt {
-    if ($script:CredPrompted) { return }
-    $script:CredPrompted = $true
+function global:Invoke-CredentialPrompt {
+    if ($global:CredPrompted) { return }
+    $global:CredPrompted = $true
     Write-Host 'Access denied. Prompting once. This credential is reused for the remaining hosts.'
     $cred = Get-Credential -Message 'Access denied on a target. Credential is reused for the rest of this run.'
     if (-not $cred) {
-        $script:CredCancelled = $true
+        $global:CredCancelled = $true
         return
     }
-    $script:AltCred = $cred
+    $global:AltCred = $cred
 }
 
-function Read-HostEventsRpc {
+function global:Read-HostEventsRpc {
     param(
         [string]$ComputerName,
         [datetime]$StartTime,
@@ -403,15 +405,15 @@ function Read-HostEventsRpc {
         }
         return [pscustomobject]@{
             ComputerName = $ComputerName
-            Reboot       = (Read-RemoteLog -LogName 'System' -Ids $script:RebootIds)
-            Update       = (Read-RemoteLog -LogName $script:UpdateLog -Ids $script:UpdateIds)
+            Reboot       = (Read-RemoteLog -LogName 'System' -Ids $global:RebootIds)
+            Update       = (Read-RemoteLog -LogName $global:UpdateLog -Ids $global:UpdateIds)
         }
     } finally {
         Disconnect-Ipc -Remote $ipc
     }
 }
 
-function Get-HostDiagnostics {
+function global:Get-HostDiagnostics {
     param(
         [string]$ComputerName,
         [datetime]$StartTime
@@ -427,7 +429,7 @@ function Get-HostDiagnostics {
     $collector = New-CollectorScript
     if (Test-LocalHostName -Name $ComputerName) {
         try {
-            $bundle = & $collector $StartTime $script:RebootIds $script:UpdateIds $script:UpdateLog
+            $bundle = & $collector $StartTime $global:RebootIds $global:UpdateIds $global:UpdateLog
             $row.Transport = 'Local'
             $row.Reboot = $bundle.Reboot
             $row.Update = $bundle.Update
@@ -444,10 +446,10 @@ function Get-HostDiagnostics {
         $params = @{
             ComputerName = $ComputerName
             ScriptBlock  = $collector
-            ArgumentList = @($StartTime, $script:RebootIds, $script:UpdateIds, $script:UpdateLog)
+            ArgumentList = @($StartTime, $global:RebootIds, $global:UpdateIds, $global:UpdateLog)
             ErrorAction  = 'Stop'
         }
-        if ($script:AltCred) { $params.Credential = $script:AltCred }
+        if ($global:AltCred) { $params.Credential = $global:AltCred }
         $bundle = Invoke-Command @params
         $row.Transport = 'WinRM'
         $row.Reboot = $bundle.Reboot
@@ -456,11 +458,11 @@ function Get-HostDiagnostics {
         return [pscustomobject]$row
     } catch {
         $winrmError = $_.Exception.Message
-        if ((Test-AccessDeniedMessage -Message $winrmError) -and -not $script:CredPrompted) {
+        if ((Test-AccessDeniedMessage -Message $winrmError) -and -not $global:CredPrompted) {
             Invoke-CredentialPrompt
-            if ($script:AltCred) {
+            if ($global:AltCred) {
                 try {
-                    $bundle = Invoke-Command -ComputerName $ComputerName -Credential $script:AltCred -ScriptBlock $collector -ArgumentList @($StartTime, $script:RebootIds, $script:UpdateIds, $script:UpdateLog) -ErrorAction Stop
+                    $bundle = Invoke-Command -ComputerName $ComputerName -Credential $global:AltCred -ScriptBlock $collector -ArgumentList @($StartTime, $global:RebootIds, $global:UpdateIds, $global:UpdateLog) -ErrorAction Stop
                     $row.Transport = 'WinRM'
                     $row.Reboot = $bundle.Reboot
                     $row.Update = $bundle.Update
@@ -474,7 +476,7 @@ function Get-HostDiagnostics {
     }
 
     try {
-        $bundle = Read-HostEventsRpc -ComputerName $ComputerName -StartTime $StartTime -Credential $script:AltCred
+        $bundle = Read-HostEventsRpc -ComputerName $ComputerName -StartTime $StartTime -Credential $global:AltCred
         $row.Transport = 'RPC'
         $row.Reboot = $bundle.Reboot
         $row.Update = $bundle.Update
@@ -484,11 +486,11 @@ function Get-HostDiagnostics {
         return [pscustomobject]$row
     } catch {
         $rpcError = $_.Exception.Message
-        if ((Test-AccessDeniedMessage -Message $rpcError) -and -not $script:CredPrompted) {
+        if ((Test-AccessDeniedMessage -Message $rpcError) -and -not $global:CredPrompted) {
             Invoke-CredentialPrompt
-            if ($script:AltCred) {
+            if ($global:AltCred) {
                 try {
-                    $bundle = Read-HostEventsRpc -ComputerName $ComputerName -StartTime $StartTime -Credential $script:AltCred
+                    $bundle = Read-HostEventsRpc -ComputerName $ComputerName -StartTime $StartTime -Credential $global:AltCred
                     $row.Transport = 'RPC'
                     $row.Reboot = $bundle.Reboot
                     $row.Update = $bundle.Update
@@ -505,17 +507,17 @@ function Get-HostDiagnostics {
     }
 }
 
-function Get-UpdateRebootPairs {
+function global:Get-UpdateRebootPairs {
     param($RebootEvents, $UpdateEvents)
     $pairs = New-Object System.Collections.Generic.List[object]
-    $reboots = @($RebootEvents | Where-Object { $_.Id -in $script:PairRebootIds })
-    $updates = @($UpdateEvents | Where-Object { $_.Id -in $script:PairUpdateIds })
+    $reboots = @($RebootEvents | Where-Object { $_.Id -in $global:PairRebootIds })
+    $updates = @($UpdateEvents | Where-Object { $_.Id -in $global:PairUpdateIds })
     foreach ($u in $updates) {
         $uTime = [datetime]::Parse($u.TimeCreated).ToUniversalTime()
         foreach ($r in $reboots) {
             $rTime = [datetime]::Parse($r.TimeCreated).ToUniversalTime()
             $delta = ($rTime - $uTime).TotalMinutes
-            if ($delta -ge 0 -and $delta -le $script:PairWindowMinutes) {
+            if ($delta -ge 0 -and $delta -le $global:PairWindowMinutes) {
                 $pairs.Add([pscustomobject]@{
                     UpdateId       = [int]$u.Id
                     UpdateTimeUtc  = $u.TimeCreated
@@ -531,7 +533,7 @@ function Get-UpdateRebootPairs {
     return @($pairs | Sort-Object UpdateTimeUtc, DeltaMinutes)
 }
 
-function Trim-Message {
+function global:Trim-Message {
     param([string]$Message, [int]$Max = 400)
     if (-not $Message) { return '' }
     $one = ($Message -replace '\s+', ' ').Trim()
@@ -539,7 +541,7 @@ function Trim-Message {
     return $one.Substring(0, $Max) + '...'
 }
 
-function Format-EventLines {
+function global:Format-EventLines {
     param($Events, [int]$Cap)
     $all = @($Events | Sort-Object TimeCreated -Descending)
     $shown = @($all | Select-Object -First $Cap)
@@ -557,7 +559,7 @@ function Format-EventLines {
     return $lines
 }
 
-function Build-Markdown {
+function global:Build-Markdown {
     param($Report)
     $sb = New-Object System.Text.StringBuilder
     [void]$sb.AppendLine('# Server event diagnostics')
@@ -586,7 +588,7 @@ function Build-Markdown {
             [void]$sb.AppendLine("- Log: $($h.Reboot.LogName)")
             [void]$sb.AppendLine("- LogPresent: $($h.Reboot.LogPresent)")
             if ($h.Reboot.Error) { [void]$sb.AppendLine("- Error: $($h.Reboot.Error)") }
-            foreach ($line in (Format-EventLines -Events $h.Reboot.Events -Cap $script:MarkdownCap)) {
+            foreach ($line in (Format-EventLines -Events $h.Reboot.Events -Cap $global:MarkdownCap)) {
                 [void]$sb.AppendLine($line)
             }
         }
@@ -599,7 +601,7 @@ function Build-Markdown {
             [void]$sb.AppendLine("- Log: $($h.Update.LogName)")
             [void]$sb.AppendLine("- LogPresent: $($h.Update.LogPresent)")
             if ($h.Update.Error) { [void]$sb.AppendLine("- Error: $($h.Update.Error)") }
-            foreach ($line in (Format-EventLines -Events $h.Update.Events -Cap $script:MarkdownCap)) {
+            foreach ($line in (Format-EventLines -Events $h.Update.Events -Cap $global:MarkdownCap)) {
                 [void]$sb.AppendLine($line)
             }
         }
@@ -624,7 +626,7 @@ function Build-Markdown {
     return $sb.ToString()
 }
 
-function Export-DiagnosticsReport {
+function global:Export-DiagnosticsReport {
     param($Report)
     $desktop = Get-DesktopPath
     $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -651,7 +653,7 @@ function Export-DiagnosticsReport {
     }
 }
 
-function Invoke-DiagnosticsRun {
+function global:Invoke-DiagnosticsRun {
     param(
         [string]$Mode,
         [string]$ManualText,
@@ -678,8 +680,8 @@ function Invoke-DiagnosticsRun {
         GeneratedUtc      = [datetime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
         WindowStartUtc    = $start.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
         WindowDays        = $Days
-        PairWindowMinutes = $script:PairWindowMinutes
-        MarkdownCap       = $script:MarkdownCap
+        PairWindowMinutes = $global:PairWindowMinutes
+        MarkdownCap       = $global:MarkdownCap
         TargetMode        = $Mode
         Notes             = @($resolved.Notes)
         JsonPath          = $null
@@ -693,7 +695,7 @@ function Show-ConsoleMenu {
     $mode = 'DomainControllers'
     $manual = ''
     $file = ''
-    $days = $script:DefaultDays
+    $days = $global:DefaultDays
     while ($true) {
         Write-Host ''
         Write-Host 'Server event diagnostics'
@@ -817,7 +819,7 @@ function Show-WinForm {
     $numDays.Location = New-Object System.Drawing.Point(130, 204)
     $numDays.Minimum = 1
     $numDays.Maximum = 90
-    $numDays.Value = $script:DefaultDays
+    $numDays.Value = $global:DefaultDays
     $form.Controls.Add($numDays)
 
     $lblMod = New-Object System.Windows.Forms.Label
