@@ -35,8 +35,8 @@ Thresholds: PHP 8.5.12 / 8.4.27 / 8.3.36 / 8.2.35 (CVE-2026-109618, CVE-2026-109
 
 ## 2. Device groups [D7][D8]
 **Endpoints > Groups > Add**:
-- **Pilot:** **Static Group** (pick devices). Name `PILOT - PHP/Node Scan`, containing one internal server.
-- **Servers:** **Dynamic Group** `Windows Servers - PHP/Node Scan`: `OS Type` = `Windows` AND `Endpoint Type` = `server` (lowercase) [D8]. `OS Installation Type` = `Server` is an alternative attribute [D8].
+- **Pilot:** **Static Group** (pick devices). Name `PHP/Node Check - Pilot`, containing one internal server.
+- **Servers:** **Dynamic Group** `Windows Servers - PHP/Node Check`: `OS Type` = `Windows` AND `Endpoint Type` = `server` (lowercase) [D8]. `OS Installation Type` = `Server` is an alternative attribute [D8].
 - **Workstations (later):** Dynamic Group with `Endpoint Type` = `desktop` [D8].
 
 ## 3. Primary: Script monitor (daily, ticket, auto-resolve) [D5]

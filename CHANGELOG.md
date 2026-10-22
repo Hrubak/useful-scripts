@@ -2,6 +2,9 @@
 
 ## 2026-10-22
 
+### Changed
+- `windows/asio/ASIO-SETUP.md` — device group names aligned: `Windows Servers - PHP/Node Check` (dynamic) and `PHP/Node Check - Pilot` (static).
+
 ### Added
 - `windows/asio/` — ConnectWise RMM (Asio) version of the PHP / Node.js security check.
   - `Invoke-PhpNodeSecurityCheck.Asio.ps1`: non-interactive, runs as SYSTEM on PowerShell 5.1, no network; exit 0 clean / 1 vulnerable / 2 error; one finding line per install; `-Summary` mode for custom fields.
