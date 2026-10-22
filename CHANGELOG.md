@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-22
+
+### Added
+- `windows/Check-PhpNodeSecurity.ps1` — Checks PHP and Node.js versions against the Oct 21 2026 security releases (PHP2Shell: CVE-2026-109618 / CVE-2026-109619; Node.js October 2026 releases).
+  - Scans PATH and common install locations (XAMPP, Laragon, Program Files, nvm-windows, etc.).
+  - Not installed is reported as clean (advisory does not apply).
+  - Optional interactive winget upgrade path when a vulnerable version is found.
+  - Fixed thresholds: PHP 8.5.12 / 8.4.27 / 8.3.36 / 8.2.35; Node 22.23.4 / 24.22.1 / 26.12.1.
+
 ## 2026-10-21
 
 ### Added
