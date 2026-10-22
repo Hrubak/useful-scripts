@@ -44,7 +44,7 @@ function Get-VersionFromExe {
     if (-not (Test-Path $ExePath)) { return $null }
     try {
         $output = & $ExePath -v 2>$null | Select-Object -First 1
-        if ($output -match '(\d+\.\d+\.\d+)') {
+        if ($output -match '([0-9]+\.[0-9]+\.[0-9]+)') {
             return [version]$Matches[1]
         }
     } catch {}
@@ -55,7 +55,7 @@ function Get-InstalledVersion {
     param([string]$Command)
     try {
         $output = & $Command -v 2>$null | Select-Object -First 1
-        if ($output -match '(\d+\.\d+\.\d+)') {
+        if ($output -match '([0-9]+\.[0-9]+\.[0-9]+)') {
             return [version]$Matches[1]
         }
     } catch {}
