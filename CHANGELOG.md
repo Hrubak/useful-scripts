@@ -3,6 +3,7 @@
 ## 2026-10-22
 
 ### Changed
+- `windows/asio/ASIO-SETUP.md` — added pilot results (internal server): RMM ignores script exit codes (alert on output text, incl. `ERROR:`), `%output%` custom field confirmed, default ticket format and auto-resolve confirmed; recommend lower severity, daily schedule, existing `Windows Servers` dynamic group; fake `node.exe` testing tip.
 - `windows/asio/ASIO-SETUP.md` — device group names aligned: `Windows Servers - PHP/Node Check` (dynamic) and `PHP/Node Check - Pilot` (static).
 
 ### Added

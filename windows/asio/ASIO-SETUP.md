@@ -17,7 +17,7 @@ Community reference (conventions and examples only):
 - **[P1]** ProVal monitor "CVE-2025-24084 - WSL Uninstall": https://content.provaltech.com/docs/b63666c3-5c0c-430b-b8c2-7e937c9109fe
 - **[P2]** ProVal task "Detect SMB1": https://content.provaltech.com/docs/f5a58819-dcc7-4905-a3b5-52ff73751e21
 
-Items still marked **(verify in pilot)** are ones the official docs don't cover.
+Items the official docs don't cover were checked in the pilot on 2026-10-22; see §8. Anything still marked **(verify)** wasn't tested.
 
 ## 1. Output contract
 
@@ -29,26 +29,26 @@ Items still marked **(verify in pilot)** are ones the official docs don't cover.
 
 `-Summary` mode prints one line of at most 300 characters, for a custom field: `OK (checked N)` / `VULNERABLE 2: PHP 8.3.30; Node.js 22.23.3` / `ERROR: <message>`. Exit codes are the same. A Script Editor step can't pass switches, so in the task copy change `$SummaryDefault = $false` to `$true` near the top of the script.
 
-**Matching on output text is the primary signal.** The docs don't say whether a non-zero exit code makes a step or monitor count as "Failure", so exit-code handling is **(verify in pilot)**. Tokens to match: `VULNERABLE` (alert), `OK` (resolve; use `OK: no vulnerable` in the monitor), `ERROR:` (script health).
+**Output text is the only reliable signal.** In the pilot, exit code 1 still showed task status **Success**, so the RMM ignores script exit codes (§8). Tokens to match: `VULNERABLE` (alert), `OK` (resolve; use `OK: no vulnerable` in the monitor), `ERROR:` (script health).
 
 Thresholds: PHP 8.5.12 / 8.4.27 / 8.3.36 / 8.2.35 (CVE-2026-109618, CVE-2026-109619). Node.js 26.12.1 / 24.22.1 / 22.23.4 (Oct 21 2026 release). EOL branches (PHP ≤ 8.1, Node ≤ 20) are always flagged. Unreadable versions are reported as `Found=unknown Fixed=review-manually`.
 
 ## 2. Device groups [D7][D8]
 **Endpoints > Groups > Add**:
 - **Pilot:** **Static Group** (pick devices). Name `PHP/Node Check - Pilot`, containing one internal server.
-- **Servers:** **Dynamic Group** `Windows Servers - PHP/Node Check`: `OS Type` = `Windows` AND `Endpoint Type` = `server` (lowercase) [D8]. `OS Installation Type` = `Server` is an alternative attribute [D8].
+- **Servers:** use the **existing** dynamic group `Windows Servers`, which already filters `OS Type` = `Windows` AND `Endpoint Type` = `server` [D8]. No new group is needed. (If a tenant lacks it, create a Dynamic Group `Windows Servers - PHP/Node Check` with those criteria; `OS Installation Type` = `Server` is an alternative attribute [D8].)
 - **Workstations (later):** Dynamic Group with `Endpoint Type` = `desktop` [D8].
 
 ## 3. Primary: Script monitor (daily, ticket, auto-resolve) [D5]
 1. **Endpoints > Alerts > Monitors > Create Monitor**.
-2. **Name:** `SEC - PHP/Node.js Oct-2026 Vulnerability`. **Description:** `Flags PHP < 8.5.12/8.4.27/8.3.36/8.2.35 and Node.js < 26.12.1/24.22.1/22.23.4 or EOL branches.` **Type:** `Script`. **Family:** a relevant family. **Severity:** a critical-level severity. (ProVal uses `Critical Impact Alerts` [P1]; check the available options in your tenant **(verify in pilot)**.)
+2. **Name:** `SEC - PHP/Node.js Oct-2026 Vulnerability`. **Description:** `Flags PHP < 8.5.12/8.4.27/8.3.36/8.2.35 and Node.js < 26.12.1/24.22.1/22.23.4 or EOL branches.` **Type:** `Script`. **Family:** a relevant family. **Severity:** pick a **lower** severity than Critical. In the pilot, the critical-level setting produced **Priority - Emergency** tickets (§8). The exact option names vary by tenant.
 3. **Conditions:** **Run script on** `Schedule`, **Repeat every** `1`, **Unit** `Days`. **Script Language** `PowerShell`. **Script**: paste the full default-mode script (leave `$SummaryDefault = $false`) [D5].
-4. **Script Output** `Contains` `VULNERABLE`. Use AND/OR only if you add more criteria [D5].
-5. Tick **Escalate ticket on script failure** so `ERROR:` runs and failed executions also raise tickets [D5]. Whether exit codes 1/2 alone count as "failure" is **(verify in pilot)**.
-6. **Resources:** the Static pilot group first, then the Dynamic servers group [D5][D7].
+4. **Script Output** `Contains` `VULNERABLE` **OR** `Contains` `ERROR:` [D5]. The `ERROR:` criterion is needed because exit codes are ignored, so a script error will never show as a failure.
+5. Tick **Escalate ticket on script failure** [D5]. This covers only execution failures such as a timeout or the agent not running the script. Exit codes 1/2 do **not** count as failure (pilot, §8).
+6. **Resources:** the Static pilot group first, then the existing `Windows Servers` dynamic group [D5][D7].
 7. **Ticket Resolution > Automatically resolve > Run same script as above**, Script Output `Contains` `OK: no vulnerable` [D5].
 8. **Monitor Output: Generate Ticket** (recommended; auto-resolve works). Alternatives: Generate Ticket with Delay (5–60 min) or Do Not Generate Ticket [D5].
-9. **Ticket content.** The default ticket body has a fixed format the docs don't describe **(verify in pilot)**. The variables available are ObservedDate, MonitorDesc, MonitorName, MonitorSummary, ScriptLanguage, **ScriptOutput** and Status [D6]. ScriptOutput carries the whole report, so each finding line already includes device, product, found and fixed versions. Output is kept short: one header line plus one line per finding.
+9. **Ticket content.** The default ticket format was confirmed in the pilot (§8): the subject names the monitor, device and site plus the priority, and the body includes the full Script Output. The variables available are ObservedDate, MonitorDesc, MonitorName, MonitorSummary, ScriptLanguage, **ScriptOutput** and Status [D6]. ScriptOutput carries the whole report, so each finding line already includes device, product, found and fixed versions. Output is kept short: one header line plus one line per finding.
 10. Monitors alert only when the value **changes** and meets the criteria [D6]. A device that stays vulnerable won't re-alert daily; the ticket simply stays open until resolved.
 
 **Optional custom ticket template [D6]:** build a Script Editor task with a **Create Ticket** step using `@MonitorName@`-style variables (e.g. summary `PHP/Node.js vulnerable: @MonitorName@`, body including the ScriptOutput variable). Attach it as the monitor's automation and set **Monitor Output: Do Not Generate Ticket**. The tradeoff is that **these tickets are not auto-closed**, so techs must close them by hand. Recommendation: keep the default **Generate Ticket**.
@@ -60,7 +60,7 @@ Thresholds: PHP 8.5.12 / 8.4.27 / 8.3.36 / 8.2.35 (CVE-2026-109618, CVE-2026-109
 2. **Task [D1]: Automation > Tasks > Add > Script Editor**. Name `SEC - PHP/Node.js Oct-2026 Check`; Category is optional (defaults to custom). Build it with **Add Row** / **Add Logic**:
    - **Row 1, PowerShell Script:** paste the script with `$SummaryDefault = $true`. **Run as: System** (set it explicitly; the other option is Current Logged In User [D3]). Timeout: set **300 s** explicitly. Per the docs, a step's timeout is its value + 5 min, an undefined step gets 20 min, and the task's global timeout is the sum of its steps + 15 min [D1].
    - **Row 2, Script Log:** `Output:%output%` [D1][P2]. `%output%` and `%status%` are system variables [D1].
-   - **Row 3, If/Then (Output Contains `VULNERABLE`)** → **Set Custom Field** `PhpNodeVulnStatus` = `%output%`. Else-if **Output Contains `ERROR:`** → `%output%`. Else → `OK` [D1]. The docs don't say a custom-field value can be `%output%` **(verify in pilot)**. Fallback: set literal values (`VULNERABLE` / `ERROR` / `OK`), or switch the field to a Dropdown.
+   - **Row 3, If/Then (Output Contains `VULNERABLE`)** → **Set Custom Field** `PhpNodeVulnStatus` = `%output%`. Else-if **Output Contains `ERROR:`** → `%output%`. Else → `OK` [D1]. Using `%output%` as the custom-field value **works**: the pilot field showed the summary line (§8).
    - Simpler option (no custom field): **Automation > Tasks > Add > Powershell Script** (single-script task). Expected execution time defaults to **300 s**; run as System [D2][D3].
 3. **Schedule [D2]:** Automation > Tasks > select the task > **Schedule**.
    - Recurrence **Daily** (e.g. 02:00), target the pilot group and later the servers group.
@@ -70,7 +70,7 @@ Thresholds: PHP 8.5.12 / 8.4.27 / 8.3.36 / 8.2.35 (CVE-2026-109618, CVE-2026-109
 5. Don't also build a monitor on the custom field while §3 is active, or you'll get duplicate tickets.
 
 ## 5. Alert rule
-Ticket when the output contains `VULNERABLE`, or on script failure / `ERROR:` (escalate on script failure). Auto-resolve on `OK: no vulnerable`. Exit codes 0/1/2 are kept for future use; their effect on RMM status is **(verify in pilot)**.
+Ticket when the output contains `VULNERABLE`, or on script failure / `ERROR:` (escalate on script failure). Auto-resolve on `OK: no vulnerable`. Exit codes 0/1/2 are kept for local and other tooling, but the RMM ignores them (task status stays Success), so all alerting keys on output text.
 
 ## 6. Pilot plan
 1. **One internal server** (Static pilot group).
@@ -86,3 +86,23 @@ Ticket when the output contains `VULNERABLE`, or on script failure / `ERROR:` (e
 - PHP: install the matching branch build from windows.php.net, then restart IIS/Apache/PHP-FPM. Upgrade branches 8.1 and older.
 - Node.js: install 22.23.4 / 24.22.1 / 26.12.1 or newer. Update every listed nvm version.
 - `-AllowWingetUpgrade` exists but stays off, because winget is often unavailable as SYSTEM.
+
+## 8. Pilot results (2026-10-22, internal server)
+Tested on one internal pilot server. Client, site and device names are deliberately omitted.
+
+1. **Clean run.** Task status **Success**, output `OK (checked 1)`. Only PHP was installed, at a patched version.
+2. **Vulnerable test.** A fake `node.exe` (a copy of `whoami.exe`) placed in `C:\Program Files\nodejs\` gave the summary output `VULNERABLE 1: Node.js 10.0.20348`. The version came from the file version info, and Node 10 is an EOL branch, so it was flagged.
+3. **Exit codes are ignored.** Exit code 1 still showed task status **Success**. Alerting must key on output text (`VULNERABLE`, `ERROR:`), never on exit codes.
+4. **Set Custom Field with `%output%` works.** `PhpNodeVulnStatus` showed the `-Summary` line.
+5. **Monitor ticket** (monitor temporarily on a 5-minute schedule):
+   - Subject: `Script Monitor - <monitor> is triggered on <device> (<device>) at the site <site> / Priority - Emergency`.
+   - Body: company, site, resource, observed time (UTC), monitor name and description, script language, `Keyword detected:` (blank), and the full Script Output lines with `Device=… Product=… Found=… Fixed=… Path=…`.
+6. **Auto-resolve works.** After the fake file was removed, the ticket auto-resolved within one cycle.
+7. **Change-based alerting.** Monitors fire only when the value **changes** and meets the criteria [D6]. A device that stays vulnerable won't open a new ticket every day; the existing ticket stays open until it resolves.
+
+**Recommendations from the pilot**
+- Lower the monitor severity so tickets aren't created as **Emergency**.
+- Set the schedule back to **Repeat every 1 Days** after testing.
+- Target the existing dynamic group **`Windows Servers`** (already OS Type Windows + Endpoint Type server) instead of creating a new group.
+- **Testing tip:** to force a detection, copy `C:\Windows\System32\whoami.exe` to `C:\Program Files\nodejs\node.exe` on a test server only, and only if Node.js isn't really installed there. It reports as Node.js 10.x, which is EOL and therefore vulnerable. Check the ticket, then **delete the fake file** and confirm auto-resolve.
+
