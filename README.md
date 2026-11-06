@@ -12,6 +12,7 @@ Each script lives in its own folder with a `README.md`.
 | [windows/shoreware-backup](windows/shoreware-backup/) | Shoreware MySQL dump, gzip, Graph upload to SharePoint |
 | [windows/Collect-NPS-Diagnostics.ps1](windows/Collect-NPS-Diagnostics.ps1) | NPS config, cert, and event collection (2012 R2+, secrets redacted) |
 | [windows/Get-NpsRadiusDiagnostics.ps1](windows/Get-NpsRadiusDiagnostics.ps1) | NPS RADIUS health and recent Wi-Fi auth failures (markdown/JSON report) |
+| [windows/Collect-WiFiDiagnostics.ps1](windows/Collect-WiFiDiagnostics.ps1) | Wi-Fi drop diagnostics: native WLAN report, netsh state, 3-day event logs (no secrets) |
 | [windows/Check-PhpNodeSecurity.ps1](windows/Check-PhpNodeSecurity.ps1) | PHP / Node.js version check against Oct 21 2026 security releases (PATH + common locations, optional winget update) |
 | [windows/asio](windows/asio/) | ConnectWise RMM (Asio) version of the PHP / Node.js check: non-interactive, SYSTEM-safe, exit codes 0/1/2, Pester tests and setup guide |
 

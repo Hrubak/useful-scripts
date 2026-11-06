@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-06
+
+### Added
+- `windows/Collect-WiFiDiagnostics.ps1` — Wi-Fi drop diagnostics for intermittent connection drops on Windows 10/11.
+  - Generates the native WLAN report (`netsh wlan show wlanreport`), captures current netsh adapter, driver, profile, network, and settings state, and exports the last 3 days of WLAN-AutoConfig, NCSI, and relevant System events.
+  - Does not collect passwords or PSK material.
+  - Writes a timestamped folder on the Desktop. Primary artifact is `wlan-report.html`.
+
 ## 2026-10-22
 
 ### Changed
